@@ -5,13 +5,35 @@
 
 // firrst chart
 $(document).ready(function() {
-// date picker function
+
+  let myChart1, myChart2, myChart3, myChart4;
+// Initialize charts on document ready
+$(document).ready(function() {
+  initializeCharts();
+  // Attach the resize event handler
+  $(window).on('resize', resizeCharts);
+});
+
+
+// // date picker function
   $('#start_date').datepicker({
-    format: 'yyyy-mm-dd'
+    format: 'yyyy-mm-dd',
+    autoclose: true
 });
-$('#end_date').datepicker({
-  format: 'yyyy-mm-dd'
-});
+// handling the click event on the icon 
+$('#start_date_icon').click(function(){
+  $('#start_date').focus();
+})
+
+  // Initialize the datepicker on the input field
+  $('#end_date').datepicker({
+      format: 'yyyy-mm-dd',
+      autoclose: true
+  });
+  // Handle the click event on the calendar icon to open the datepicker
+  $('#end_date_icon').click(function() {
+      $('#end_date').focus(); // Trigger focus event to open the datepicker
+  });
 
 // function for setting the yesterdays date
 var yesterday = new Date();
@@ -36,6 +58,48 @@ $('#end_date').datepicker({
     todayHighlight: true
 }).datepicker('setDate', formattedDate);
 
+
+
+// new datepicker code
+// document.addEventListener('DOMContentLoaded', function() {
+//   // Initialize the datepickers
+//   const startDatePicker = datepicker('#start_date', {
+//       formatter: (input, date, instance) => {
+//           const value = date.toISOString().split('T')[0];
+//           input.value = value; // e.g. 2020-06-01
+//       },
+//       onSelect: function(instance, date) {
+//           instance.hide();
+//       }
+//   });
+
+//   const endDatePicker = datepicker('#end_date', {
+//       formatter: (input, date, instance) => {
+//           const value = date.toISOString().split('T')[0];
+//           input.value = value; // e.g. 2020-06-01
+//       },
+//       onSelect: function(instance, date) {
+//           instance.hide();
+//       }
+//   });
+
+//   // Handle the click event on the calendar icons to open the datepickers
+//   document.getElementById('start_date_icon').addEventListener('click', function() {
+//       startDatePicker.show();
+//   });
+
+//   document.getElementById('end_date_icon').addEventListener('click', function() {
+//       endDatePicker.show();
+//   });
+
+//   // Set yesterday's date
+//   var yesterday = new Date();
+//   yesterday.setDate(yesterday.getDate() - 1);
+//   var formattedDate = yesterday.toISOString().split('T')[0];
+
+//   startDatePicker.setDate(new Date(formattedDate), true); // true to trigger onSelect
+//   endDatePicker.setDate(new Date(formattedDate), true); // true to trigger onSelect
+// });
 
 
 // Function to get restaurant names
@@ -85,6 +149,10 @@ async function initializeFiltersAndFetchData() {
   fetchOldVsNewCustomer(defaultFilters, function(data) {
     updateOldVsNewCustomer(data);
   });
+
+
+
+
 }
 
 // Main function to fetch restaurant names and then initialize filters and fetch data
@@ -94,136 +162,6 @@ async function main() {
 }
 // Call the main function
 main();
-
-
-
-
-
-  // var chartDom = document.getElementById('ch1');
-  // var myChart1 = echarts.init(chartDom);
-  // var option = {
-  //     title: {
-  //         text: 'World Population'
-  //     },
-  //     tooltip: {
-  //         trigger: 'axis',
-  //         axisPointer: {
-  //             type: 'shadow'
-  //         }
-  //     },
-  //     legend: {},
-  //     grid: {
-  //         left: '3%',
-  //         right: '4%',
-  //         bottom: '3%',
-  //         containLabel: true
-  //     },
-  //     xAxis: {
-  //         type: 'value',
-  //         boundaryGap: [0, 0.01]
-  //     },
-  //     yAxis: {
-  //         type: 'category',
-  //         data: ['Brazil', 'Indonesia', 'USA', 'India', 'China', 'World']
-  //     },
-  //     series: [
-  //         {
-  //             // name: '2011',
-  //             type: 'bar',
-  //             data: [18203, 23489, 29034, 104970, 131744, 630230]
-  //         },
-        
-  //     ]
-  // };
-  // myChart1.setOption(option);
-
-// second card
-// var myChart2 = echarts.init(document.getElementById('ch2'));
-  
-// // Specify the configuration items and data for the chart
-// var option = {
-//   title: {
-//     text: 'ECharts Getting'
-//   },
-//   tooltip: {},
-//   legend: {
-//     data: ['sales']
-//   },
-//   xAxis: {
-//     data: ['Shirts', 'Cardigans', 'Chiffons', 'Pants', 'Heels', 'Socks']
-//   },
-//   yAxis: {},
-//   series: [
-//     {
-//       name: 'sales',
-//       type: 'bar',
-//       data: [5, 20, 36, 10, 10, 20]
-//     }
-//   ]
-// };
-
-// myChart2.setOption(option);
-
-// // third second
-// var chartDom = document.getElementById('ch3');
-// var myChart3 = echarts.init(chartDom);
-// var option;
-
-// option = {
-//   xAxis: {
-//     type: 'category',
-//     data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-//   },
-//   yAxis: {
-//     type: 'value'
-//   },
-//   series: [
-//     {
-//       data: [150, 230, 224, 218, 135, 147, 260],
-//       type: 'line'
-//     }
-//   ]
-// };
-
-// myChart3.setOption(option);
-
-// // fourth chart
-// var chartDom = document.getElementById('ch4');
-// var myChart4 = echarts.init(chartDom);
-// var option;
-
-// option = {
-//   legend: {},
-//   tooltip: {},
-//   dataset: {
-//     source: [
-//       ['product',  '2016', '2017'],
-//       ['Matcha Latte',  85.8, 93.7],
-//       ['Milk Tea',  73.4, 55.1],
-//       ['Cheese Cocoa',  65.2, 82.5],
-//       ['Walnut Brownie',  53.9, 39.1]
-//     ]
-//   },
-//   xAxis: { type: 'category' },
-//   yAxis: {},
-//   // Declare several bar series, each will be mapped
-//   // to a column of dataset.source by default.
-//   series: [ { type: 'bar' }, { type: 'bar' }]
-// };
-
-// myChart4.setOption(option);
-
-
-
-
-
-// script for resize the window
-$(window).on('resize', function(){
-  myChart1.resize();
-  myChart2.resize();
-  myChart3.resize();
-  myChart4.resize();
-})
 
  //click events
  $('#applyFilters').click(function() {
@@ -275,7 +213,10 @@ function fetchTop5Items(filters, callback){
 }
 // callbackfunction for fetchtop5items
 function updateTop5Items(data){
-  const myChart1 = echarts.init(document.getElementById('ch1'));
+  if (!myChart1) {
+    myChart1 = echarts.init(document.getElementById('ch1'));
+}
+ 
 
   var option = {
     title: {
@@ -327,7 +268,9 @@ function fetchTop10Category(filters, callback) {
 
 function updateTop10Category(data) {
   console.log(data, "updatetop10category")
-  var myChart2 = echarts.init(document.getElementById('ch2'));
+  if (!myChart2) {
+    myChart2 = echarts.init(document.getElementById('ch2'));
+}
   
   // Specify the configuration items and data for the chart
   var option = {
@@ -373,22 +316,32 @@ function fetchDailyRevenue(filters, callback){
 // update dailyrevenue callback function
 function updateDailyRevenue(data){
   // third chart
-var chartDom = document.getElementById('ch3');
-var myChart3 = echarts.init(chartDom);
-var option;
+  if (!myChart3) {
+    myChart3 = echarts.init(document.getElementById('ch3'));
+}
 
-option = {
+ // Format the date to 'yyyy-mm-dd'
+ const formattedData = data.map(item => {
+  const date = new Date(item.transaction_date);
+  const formattedDate = date.toISOString().split('T')[0]; // Get 'yyyy-mm-dd' part
+  return {
+    ...item,
+    formattedDate: formattedDate
+  };
+});
+
+var option = {
   xAxis: {
     type: 'category',
-    data: data.map(item=> item.transaction_date)
+    data: formattedData.map(item => item.formattedDate)
   },
   yAxis: {
     type: 'value',
-    data: data.map(item=> item.total_revenue)
+    data: formattedData.map(item => item.total_revenue),
   },
   series: [
     {
-      data: data.map(item=> item.total_revenue),
+      data: formattedData.map(item => item.total_revenue),
       type: 'line'
     }
   ]
@@ -416,8 +369,9 @@ function updateOldVsNewCustomer(data){
     var dataset = formatCustomerData(data);
 
   // fourth chart
-var chartDom = document.getElementById('ch4');
-var myChart4 = echarts.init(chartDom);
+  if (!myChart4) {
+    myChart4 = echarts.init(document.getElementById('ch4'));
+}
 var option;
 
 option = {
@@ -442,12 +396,30 @@ function formatCustomerData(data) {
     ['Transaction Date', 'Old Customers', 'New Customers']
   ];
 
-  // Loop through the data and format each row
-  data.forEach(function(item) {
-    dataset.push([item.transaction_date, item.oldcustomer, item.newcustomer]);
+   // Loop through the data and format each row
+   data.forEach(function(item) {
+    // Format the transaction_date to 'yyyy-mm-dd'
+    const date = new Date(item.transaction_date);
+    const formattedDate = date.toISOString().split('T')[0]; // Get 'yyyy-mm-dd' part
+    // Push the formatted data into the dataset
+    dataset.push([formattedDate, item.oldcustomer, item.newcustomer]);
   });
-
+  
   return dataset;
+}
+
+function initializeCharts() {
+  // Initialize all charts
+  myChart1 = echarts.init(document.getElementById('ch1'));
+  myChart2 = echarts.init(document.getElementById('ch2')); // Assuming you have elements with id 'ch2'
+  myChart3 = echarts.init(document.getElementById('ch3')); // Assuming you have elements with id 'ch3'
+  myChart4 = echarts.init(document.getElementById('ch4')); // Assuming you have elements with id 'ch4'
+}
+function resizeCharts() {
+  if (myChart1) myChart1.resize();
+  if (myChart2) myChart2.resize();
+  if (myChart3) myChart3.resize();
+  if (myChart4) myChart4.resize();
 }
 
 
