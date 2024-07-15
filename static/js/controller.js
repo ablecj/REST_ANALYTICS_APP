@@ -5,6 +5,14 @@
 
 // firrst chart
 $(document).ready(function() {
+  
+  const env = 'local'; // Change to 'prod' for production environment
+
+  // Initialize varpath based on env
+  let varpath = '';
+  if (env === 'prod') {
+    varpath = '/restaurant';
+  }
 
   let myChart1, myChart2, myChart3, myChart4;
 // Initialize charts on document ready
@@ -120,6 +128,24 @@ async function getRestaurantNames() {
   }
 }
 
+async function fetchMaxTransactionDate() {
+  try {
+      const response = await $.ajax({
+          url: '/get_max_transaction_date',
+          type: 'GET'
+      });
+
+      console.log(response, "max date in frontend");
+      var maxDate = response.max_date;
+      if (maxDate) {
+          $('#end_date').datepicker('setDate', new Date(maxDate));
+          $('#start_date').datepicker('setDate', new Date(maxDate));
+      }
+  } catch (error) {
+      console.error("Error fetching max transaction date:", error);
+  }
+}
+
 // Function to initialize default filters and fetch data
 async function initializeFiltersAndFetchData() {
   var defaultFilters = {
@@ -149,7 +175,20 @@ async function initializeFiltersAndFetchData() {
   fetchOldVsNewCustomer(defaultFilters, function(data) {
     updateOldVsNewCustomer(data);
   });
+  // fetch cart dtd
+  fetchcarddtd(defaultFilters, function(data){
+    updateCarddtd(data);
+  });
 
+  // fetch cart mtd
+  fetchcardmtd(defaultFilters, function(data){
+    updateCardmtd(data);
+  });
+
+  // fetch cart ytd
+  fetchcardytd(defaultFilters, function(data){
+    updateCardytd(data);
+  });
 
 
 
@@ -158,6 +197,7 @@ async function initializeFiltersAndFetchData() {
 // Main function to fetch restaurant names and then initialize filters and fetch data
 async function main() {
   await getRestaurantNames();
+  await fetchMaxTransactionDate();
   initializeFiltersAndFetchData();
 }
 // Call the main function
@@ -195,6 +235,23 @@ main();
     updateOldVsNewCustomer(data);
   });
 
+  // fetch cart dtd
+  fetchcarddtd(filters, function(data){
+    updateCarddtd(data);
+  });
+
+  // fetch cart mtd
+  fetchcardmtd(filters, function(data){
+    updateCardmtd(data);
+  });
+
+  // fetch cart ytd
+  fetchcardytd(filters, function(data){
+    updateCardytd(data);
+  });
+
+  
+
 });
 
 // fetchTop5Items
@@ -211,43 +268,68 @@ function fetchTop5Items(filters, callback){
     }
   })
 }
+
+
 // callbackfunction for fetchtop5items
-function updateTop5Items(data){
+function updateTop5Items(data) {
   if (!myChart1) {
     myChart1 = echarts.init(document.getElementById('ch1'));
-}
- 
+  }
 
   var option = {
     title: {
-        text: 'World Population'
+      text: 'Top 5 Items'
     },
     tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-            type: 'shadow'
-        }
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: function(params) {
+        return params[0].name + ': ' + params[0].value;
+      }
     },
     legend: {},
     grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        containLabel: true
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
     },
     xAxis: {
-        type: 'value',
-        boundaryGap: [0, 0.01],
-        data: data.map(item=> item.item_count)
+      type: 'value',
+      boundaryGap: [0, 0.01]
     },
     yAxis: {
-        type: 'category',
-        data: data.map(item => item.item_name)
+      type: 'category',
+      data: data.map(item => item.item_name),
+      axisLabel: {
+        show: false // Hide y-axis labels
+      }
     },
-    series: [{ type: 'bar', data: data.map(item => item.item_count) }]
-};
-myChart1.setOption(option);
+    series: [{
+      type: 'bar',
+      data: data.map(item => item.item_count),
+      label: {
+        show: true,
+        position: 'insideLeft', // Position the labels inside the bars
+        formatter: function(params) {
+          return data[params.dataIndex].item_name; // Use the y-axis value (item_name) as the label
+        },
+        color: '#fff' // Optionally, set the color of the label text
+      },
+      itemStyle: {
+        color: '#FB6D49'
+      }
+    }]
+  };
+
+  myChart1.setOption(option);
 }
+
+
+
+
 
 
 //get data from mysql db ,
@@ -275,23 +357,37 @@ function updateTop10Category(data) {
   // Specify the configuration items and data for the chart
   var option = {
     title: {
-      text: 'ECharts Getting'
+      text: 'Top 10 Category'
     },
     tooltip: {},
     legend: {
       data: ['sales']
     },
     xAxis: {
-      data: data.map(item=> item.category_name)
+      data: data.map(item=> item.category_name),
+      axisLabel: {
+        rotate: 25  // Rotate the x-axis labels by 30 degrees
+      }
     },
     yAxis: {
-      data: data.map(item=> item.total_amount)
+      // data: data.map(item=> item.total_amount)
+      axisLabel: {
+        formatter: function (value) {
+          if (value >= 1000) {
+            return (value / 1000) + 'k';
+          }
+          return value;
+        }
+      }
     },
     series: [
       {
         // name: 'sales',
         type: 'bar',
-        data: data.map(item=> item.total_amount)
+        data: data.map(item=> item.total_amount),
+        itemStyle: {
+          color: '#FFAF46'
+        }
       }
     ]
   };
@@ -314,41 +410,63 @@ function fetchDailyRevenue(filters, callback){
 });
 }
 // update dailyrevenue callback function
-function updateDailyRevenue(data){
+function updateDailyRevenue(data) {
   // third chart
   if (!myChart3) {
     myChart3 = echarts.init(document.getElementById('ch3'));
-}
+  }
 
- // Format the date to 'yyyy-mm-dd'
- const formattedData = data.map(item => {
-  const date = new Date(item.transaction_date);
-  const formattedDate = date.toISOString().split('T')[0]; // Get 'yyyy-mm-dd' part
-  return {
-    ...item,
-    formattedDate: formattedDate
+  // Format the date to 'yyyy-mm-dd'
+  const formattedData = data.map(item => {
+    const date = new Date(item.transaction_date);
+    const formattedDate = date.toISOString().split('T')[0]; // Get 'yyyy-mm-dd' part
+    return {
+      ...item,
+      formattedDate: formattedDate
+    };
+  });
+
+  var option = {
+    title: {
+      text: 'Daily Revenue'
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross'
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: formattedData.map(item => item.formattedDate)
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: function (value) {
+          if (value >= 1000) {
+            return (value / 1000) + 'k';
+          }
+          return value;
+        }
+      }
+    },
+    series: [
+      {
+        data: formattedData.map(item => item.total_revenue),
+        type: 'line',
+        itemStyle: {
+          color: '#FFAF46'  // Custom line color
+        }
+      }
+    ]
   };
-});
 
-var option = {
-  xAxis: {
-    type: 'category',
-    data: formattedData.map(item => item.formattedDate)
-  },
-  yAxis: {
-    type: 'value',
-    data: formattedData.map(item => item.total_revenue),
-  },
-  series: [
-    {
-      data: formattedData.map(item => item.total_revenue),
-      type: 'line'
-    }
-  ]
-};
-
-myChart3.setOption(option);
+  myChart3.setOption(option);
 }
+
+
+
 
 // function for fourth chart
 function fetchOldVsNewCustomer(filters, callback){
@@ -363,32 +481,53 @@ function fetchOldVsNewCustomer(filters, callback){
     }
   })
 }
-// function for the callback 
 function updateOldVsNewCustomer(data){
-    // Process the response to match the format required by ECharts
-    var dataset = formatCustomerData(data);
+  // Process the response to match the format required by ECharts
+  var dataset = formatCustomerData(data);
 
-  // fourth chart
+  // Initialize the chart if it's not already initialized
   if (!myChart4) {
     myChart4 = echarts.init(document.getElementById('ch4'));
-}
-var option;
+  }
 
-option = {
-  legend: {},
-  tooltip: {},
-  dataset: {
-    source: dataset
-  },
-  xAxis: { type: 'category' },
-  yAxis: {},
-  // Declare several bar series, each will be mapped
-  // to a column of dataset.source by default.
-  series: [ { type: 'bar' }, { type: 'bar' }]
-};
+  var option = {
+    title: {
+      text: 'Old Customer v/s New Customer'
+    },
+    legend: {
+      orient: 'horizontal',
+      top: 'top',
+      right: 'right'
+    },
+    tooltip: {},
+    dataset: {
+      source: dataset
+    },
+    xAxis: { type: 'category' },
+    yAxis: {},
+    // Declare several bar series, each will be mapped
+    // to a column of dataset.source by default.
+    series: [
+      { 
+        type: 'bar',
+        itemStyle: {
+          color: '#664069'  // Customize the color for the first series
+        }
+      },
+      { 
+        type: 'bar',
+        itemStyle: {
+          color: '#D84B76'  // Customize the color for the second series
+        }
+      }
+    ]
+  };
 
-myChart4.setOption(option);
+  myChart4.setOption(option);
 }
+
+
+
 // Custom function to format the fetched data into the required dataset structure
 function formatCustomerData(data) {
   // Create the dataset source array with headers
@@ -422,12 +561,92 @@ function resizeCharts() {
   if (myChart4) myChart4.resize();
 }
 
+//get data from mysql db for card dtd ,
+function fetchcarddtd(filters, callback) {
+  console.log("Fetching data with filters:", filters);
+  $.ajax({
+      url: '/get_cart_dtd',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ filters: filters }),
+      success: callback,
+      error: function(xhr, status, error) {
+          console.error("Error fetching data:", status, error);
+      }
+  });
+}
+
+function updateCarddtd(data) {
+  if (data && data.length > 0) {
+      const cardDatadtd = data[0];
+
+		$("#total-revenue-dtd").text(cardDatadtd.dtdtotalrev);
+        $("#new-customer-dtd").text(cardDatadtd.dtdnewcust);
+        $("#old-customer-dtd").text(cardDatadtd.dtdoldcust);
+        $("#table-occupancy-dtd").text(cardDatadtd.dtdtableocpny);
+  } else {
+      console.error("No data to update the cards.");
+  }
+}
+
+//get data from mysql db for card mtd ,
+function fetchcardmtd(filters, callback) {
+  console.log("Fetching data with filters:", filters);
+  $.ajax({
+      url: '/get_cart_mtd',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ filters: filters }),
+      success: callback,
+      error: function(xhr, status, error) {
+          console.error("Error fetching data:", status, error);
+      }
+  });
+}
+
+function updateCardmtd(data) {
+  if (data && data.length > 0) {
+      const cardDatamtd = data[0];
+
+		$("#total-revenue-mtd").text(cardDatamtd.mtdtotalrev);
+    $("#new-customer-mtd").text(cardDatamtd.mtdnewcust);
+    $("#old-customer-mtd").text(cardDatamtd.mtdoldcust);
+    $("#table-occupancy-mtd").text(cardDatamtd.mtdtableocpny);
+  } else {
+      console.error("No data to update the cards.");
+  }
+}
+
+
+//get data from mysql db for card ytd ,
+function fetchcardytd(filters, callback) {
+  console.log("Fetching data with filters:", filters);
+  $.ajax({
+      url: '/get_cart_ytd',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ filters: filters }),
+      success: callback,
+      error: function(xhr, status, error) {
+          console.error("Error fetching data:", status, error);
+      }
+  });
+}
+
+function updateCardytd(data) {
+  if (data && data.length > 0) {
+      const cardDataytd = data[0];
+
+		    $("#total-revenue-ytd").text(cardDataytd.ytdtotalrev);
+        $("#new-customer-ytd").text(cardDataytd.ytdnewcust);
+        $("#old-customer-ytd").text(cardDataytd.ytdoldcust);
+        $("#table-occupancy-ytd").text(cardDataytd.ytdtableocpny);
+  } else {
+      console.error("No data to update the cards.");
+  }
+}
+
 
 });
-
-
-
-
-
 
 

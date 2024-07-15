@@ -66,10 +66,10 @@ def top5Items():
     restaurant_name = filters.get('restaurant_name')
 
     if restaurant_name != 'All':
-        query = "select item_name item_name,sum(item_quantity) item_count from  order_item_details where date between %s and %s and restaurant_name=%s group by item_name order by item_count desc limit 5;"
+        query = "select item_name item_name,sum(item_quantity) item_count from  order_item_details where date(date) between %s and %s and restaurant_name=%s group by item_name order by item_count desc limit 5;"
         params = [start_date, end_date, restaurant_name]
     else:
-         query = "select item_name item_name,sum(item_quantity) item_count from  order_item_details where date between %s and %s group by item_name order by item_count desc limit 5;"
+         query = "select item_name item_name,sum(item_quantity) item_count from  order_item_details where date(date) between %s and %s group by item_name order by item_count desc limit 5;"
          params = [start_date, end_date]
 
     connection = get_db_connection()
@@ -100,10 +100,10 @@ def get_data():
     print(restaurant_name, "rest")
 
     if restaurant_name != 'All':
-        query = "select category_name category_name,sum(item_total) total_amount from order_item_details where date between %s and %s and restaurant_name=%s group by category_name order by total_amount desc limit 10;"
+        query = "select category_name category_name,sum(item_total) total_amount from order_item_details where date(date) between %s and %s and restaurant_name=%s group by category_name order by total_amount desc limit 10;"
         params = [start_date, end_date, restaurant_name]
     else:
-         query = "select category_name category_name,sum(item_total) total_amount from order_item_details where date between %s and %s  group by category_name order by total_amount desc limit 10;"
+         query = "select category_name category_name,sum(item_total) total_amount from order_item_details where date(date) between %s and %s  group by category_name order by total_amount desc limit 10;"
          params = [start_date, end_date]
 
     connection = get_db_connection()
@@ -168,10 +168,10 @@ def get_oldvsnewcust():
     # print(restaurant_name, "rest")
 
     if restaurant_name != 'All':
-        query = "select transaction_date,dtd oldcustomer, mtd newcustomer from rpt_kpi_details where kpi_name='New Customer' and transaction_date between %s and %s and restaurant_name=%s"
+        query = "select transaction_date,sum(dtd) oldcustomer, sum(mtd) newcustomer from rpt_kpi_details where kpi_name='New Customer' and transaction_date between %s and %s and restaurant_name=%s group by transaction_date"
         params = [start_date, end_date, restaurant_name]
     else:
-         query = "select transaction_date,dtd oldcustomer, mtd newcustomer from rpt_kpi_details where kpi_name='New Customer' and transaction_date between %s and %s"
+         query = "select transaction_date,sum(dtd) oldcustomer, sum(mtd) newcustomer from rpt_kpi_details where kpi_name='New Customer' and transaction_date between %s and %s group by transaction_date"
          params = [start_date, end_date]
 
     connection = get_db_connection()
@@ -191,8 +191,130 @@ def get_oldvsnewcust():
     return jsonify(data)
 
 
+@app.route('/get_cart_dtd', methods=['POST'])
+def get_cart_dtd():
+    filters = request.json.get('filters', {})
+    start_date = filters.get('start_date')
+    end_date = filters.get('end_date')
+    restaurant_name = filters.get('restaurant_name')
+
+    if restaurant_name != 'All':
+        query = "select round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) dtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) dtdnewcust,round(sum(case when kpi_name='Old Customer' then dtd else 0 end )) dtdoldcust,round(sum(case when kpi_name='Table Occupancy' then dtd else 0 end )/count(distinct restaurant_name)) dtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s"
+        params = [end_date, restaurant_name]
+    else:
+         query = "select round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) dtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) dtdnewcust,round(sum(case when kpi_name='Old Customer' then dtd else 0 end )) dtdoldcust,round(sum(case when kpi_name='Table Occupancy' then dtd else 0 end )/count(distinct restaurant_name)) dtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s "
+         params = [end_date]
+
+    
+    logger.debug(f"Executing query: {query}")
+    logger.debug(f"With parameters: {params}")
+
+    connection = get_db_connection()
+    data1 = []
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, params)
+            data1 = cursor.fetchall()
+            cursor.close()
+        except Error as e:
+            logger.error(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
+    logger.debug(f"Query result: {data1}")
+    return jsonify(data1)
 
 
+@app.route('/get_cart_mtd', methods=['POST'])
+def get_cart_mtd():
+    filters = request.json.get('filters', {})
+    start_date = filters.get('start_date')
+    end_date = filters.get('end_date')
+    restaurant_name = filters.get('restaurant_name')
+
+    if restaurant_name != 'All':
+        query = "select round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) mtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) mtdnewcust,round(sum(case when kpi_name='Old Customer' then mtd else 0 end )) mtdoldcust,round(sum(case when kpi_name='Table Occupancy' then mtd else 0 end )/count(distinct restaurant_name)) mtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s"
+        params = [end_date, restaurant_name]
+    else:
+         query = "select round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) mtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) mtdnewcust,round(sum(case when kpi_name='Old Customer' then mtd else 0 end )) mtdoldcust,round(sum(case when kpi_name='Table Occupancy' then mtd else 0 end )/count(distinct restaurant_name)) mtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s "
+         params = [end_date]
+
+    
+    logger.debug(f"Executing query: {query}")
+    logger.debug(f"With parameters: {params}")
+
+    connection = get_db_connection()
+    datamtd = []
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, params)
+            datamtd = cursor.fetchall()
+            cursor.close()
+        except Error as e:
+            logger.error(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
+    logger.debug(f"Query result: {datamtd}")
+    return jsonify(datamtd)
+
+
+@app.route('/get_cart_ytd', methods=['POST'])
+def get_cart_ytd():
+    filters = request.json.get('filters', {})
+    start_date = filters.get('start_date')
+    end_date = filters.get('end_date')
+    restaurant_name = filters.get('restaurant_name')
+
+    if restaurant_name != 'All':
+        query = "select round(sum(case when kpi_name='Total Revenue' then ytd else 0 end )) ytdtotalrev,round(sum(case when kpi_name='New Customer' then ytd else 0 end )) ytdnewcust,round(sum(case when kpi_name='Old Customer' then ytd else 0 end )) ytdoldcust,round(sum(case when kpi_name='Table Occupancy' then ytd else 0 end )/count(distinct restaurant_name)) ytdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s"
+        params = [end_date, restaurant_name]
+    else:
+         query = "select round(sum(case when kpi_name='Total Revenue' then ytd else 0 end )) ytdtotalrev,round(sum(case when kpi_name='New Customer' then ytd else 0 end )) ytdnewcust,round(sum(case when kpi_name='Old Customer' then ytd else 0 end )) ytdoldcust,round(sum(case when kpi_name='Table Occupancy' then ytd else 0 end )/count(distinct restaurant_name)) ytdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s"
+         params = [end_date]
+
+    
+    logger.debug(f"Executing query: {query}")
+    logger.debug(f"With parameters: {params}")
+
+    connection = get_db_connection()
+    dataytd = []
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, params)
+            dataytd = cursor.fetchall()
+            cursor.close()
+        except Error as e:
+            logger.error(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
+    logger.debug(f"Query result: {dataytd}")
+    return jsonify(dataytd)
+
+
+@app.route('/get_max_transaction_date', methods=['GET'])
+def get_max_transaction_date():
+    query = "SELECT MAX(transaction_date) AS max_date FROM rpt_kpi_details"
+    max_date = None
+
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query)
+            result = cursor.fetchone()
+            max_date = result['max_date']
+            cursor.close()
+        except Error as e:
+            print(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
+    return jsonify({'max_date': max_date})
 
 
 
