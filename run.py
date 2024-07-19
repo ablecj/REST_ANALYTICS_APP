@@ -190,7 +190,77 @@ def get_oldvsnewcust():
     logger.debug(f"Query result: {data}")
     return jsonify(data)
 
+# route for the fetchMonthlyOrderAndRevenue
+@app.route('/get_monthlyorederandrevenue', methods=['POST'])
+def get_monthlyorderandrevenue():
+    filters = request.json.get('filters', {})
+    start_date = filters.get('start_date')
+    end_date = filters.get('end_date')
+    restaurant_name = filters.get('restaurant_name')
+    # print(restaurant_name, "rest")
 
+    if restaurant_name != 'All':
+        query = "select month_name month_name,sum(order_count) order_count,sum(revenue) revenue from (select year(date) dyear,month(date) dmonth,DATE_FORMAT(date, '%b') month_name,count(distinct invoice_no) order_count,0 revenue from order_item_details where date between '2024-01-01' and '2024-06-30' and restaurant_name=%s group by year(date),month(date),month_name union all select year(transaction_date) dyear,month(transaction_date) dmonth,DATE_FORMAT(transaction_date, '%b') month_name,0 order_count,round(sum(dtd)) revenue FROM rpt_kpi_details where transaction_date between '2024-01-01' and '2024-06-30' and restaurant_name=%s group by year(transaction_date),month(transaction_date),month_name ) A group by dyear,dmonth,month_name order by dyear,dmonth"
+        params=[restaurant_name, restaurant_name]
+    else: 
+        query= "select month_name month_name,sum(order_count) order_count,sum(revenue) revenue from (select year(date) dyear,month(date) dmonth,DATE_FORMAT(date, '%b') month_name,count(distinct invoice_no) order_count,0 revenue from order_item_details where date between '2024-01-01' and '2024-06-30' group by year(date),month(date),month_name union all select year(transaction_date) dyear,month(transaction_date) dmonth,DATE_FORMAT(transaction_date,'%b') month_name,0 order_count,round(sum(dtd)) revenue FROM rpt_kpi_details where transaction_date between '2024-01-01' and '2024-06-30' group by year(transaction_date),month(transaction_date),month_name ) A group by dyear,dmonth,month_name order by dyear,dmonth"
+        params=[]
+    logger.debug(f"Executing query: {query}")
+    logger.debug(f"With parameters: {params}")
+
+    connection = get_db_connection()
+    data = []
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, params)
+            data = cursor.fetchall()
+            cursor.close()
+        except Error as e:
+            logger.error(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
+    logger.debug(f"Query result: {data}")
+    return jsonify(data)    
+
+# route for dineindeliveryrevenue
+@app.route('/get_dineindeliveryrevenue', methods=['POST'])
+def get_DineInDeliveryRevenue():
+    filters = request.json.get('filters', {})
+    start_date = filters.get('start_date')
+    end_date = filters.get('end_date')
+    restaurant_name = filters.get('restaurant_name')
+
+    if restaurant_name != 'All':
+        query= "select date,round(sum(case when orderType='Dine In' then totalAmount else 0 end)) DineIn,round(sum(case when orderType='Delivery' then totalAmount else 0 end)) Delivery from (select date(date) date,invoice_no,REPLACE(MAX(order_type), '(Parcel)', '') orderType,max(total) totalAmount from order_item_details where date(date) between '2024-06-10' and '2024-06-25'  group by date(date),invoice_no) A group by date"
+        params=[end_date, end_date]
+
+    else:
+        query= "select date,round(sum(case when orderType='Dine In' then totalAmount else 0 end)) DineIn,round(sum(case when orderType='Delivery' then totalAmount else 0 end)) Delivery from (select date(date) date,invoice_no,REPLACE(MAX(order_type), '(Parcel)', '') orderType,max(total) totalAmount from order_item_details where date(date) between '2024-06-10' and '2024-06-25'  group by date(date),invoice_no) A group by date"
+        params=[]
+
+    logger.debug(f"Executing query: {query}")
+    logger.debug(f"With parameters: {params}")
+
+    connection = get_db_connection()
+    data = []
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, params)
+            data = cursor.fetchall()
+            cursor.close()
+        except Error as e:
+            logger.error(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
+    logger.debug(f"Query result: {data}")
+    return jsonify(data)
+
+
+# route for dtd
 @app.route('/get_cart_dtd', methods=['POST'])
 def get_cart_dtd():
     filters = request.json.get('filters', {})
@@ -199,11 +269,11 @@ def get_cart_dtd():
     restaurant_name = filters.get('restaurant_name')
 
     if restaurant_name != 'All':
-        query = "select round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) dtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) dtdnewcust,round(sum(case when kpi_name='Old Customer' then dtd else 0 end )) dtdoldcust,round(sum(case when kpi_name='Table Occupancy' then dtd else 0 end )/count(distinct restaurant_name)) dtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s"
-        params = [end_date, restaurant_name]
+        query = "select sum(dtdtotalrev) dtdtotalrev,sum(dtdnewcust) dtdnewcust,sum(dtdoldcust) dtdoldcust,sum(dtdtableocpny) dtdtableocpny,sum(ldtdtotalrev) ldtdtotalrev,sum(ldtdnewcust) ldtdnewcust from  (select round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) dtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) dtdnewcust,round(sum(case when kpi_name='Old Customer' then dtd else 0 end )) dtdoldcust,round(sum(case when kpi_name='Table Occupancy' then dtd else 0 end )/count(distinct restaurant_name)) dtdtableocpny,0 ldtdtotalrev,0 ldtdnewcust  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s union all  select 0 dtdtotalrev,0 dtdnewcust,0 dtdoldcust,0 dtdtableocpny,round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) ldtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) ldtdnewcust from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer') and transaction_date=date_add(%s,interval -1 month) and restaurant_name=%s ) A"
+        params = [end_date, restaurant_name,end_date, restaurant_name]
     else:
-         query = "select round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) dtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) dtdnewcust,round(sum(case when kpi_name='Old Customer' then dtd else 0 end )) dtdoldcust,round(sum(case when kpi_name='Table Occupancy' then dtd else 0 end )/count(distinct restaurant_name)) dtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s "
-         params = [end_date]
+         query = "select sum(dtdtotalrev) dtdtotalrev,sum(dtdnewcust) dtdnewcust,sum(dtdoldcust) dtdoldcust,sum(dtdtableocpny) dtdtableocpny,sum(ldtdtotalrev) ldtdtotalrev,sum(ldtdnewcust) ldtdnewcust from  (select round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) dtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) dtdnewcust,round(sum(case when kpi_name='Old Customer' then dtd else 0 end )) dtdoldcust,round(sum(case when kpi_name='Table Occupancy' then dtd else 0 end )/count(distinct restaurant_name)) dtdtableocpny,0 ldtdtotalrev,0 ldtdnewcust  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s union all  select 0 dtdtotalrev,0 dtdnewcust,0 dtdoldcust,0 dtdtableocpny,round(sum(case when kpi_name='Total Revenue' then dtd else 0 end )) ldtdtotalrev,round(sum(case when kpi_name='New Customer' then dtd else 0 end )) ldtdnewcust from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer') and transaction_date=date_add(%s,interval -1 month) ) A"
+         params = [end_date,end_date]
 
     
     logger.debug(f"Executing query: {query}")
@@ -234,11 +304,11 @@ def get_cart_mtd():
     restaurant_name = filters.get('restaurant_name')
 
     if restaurant_name != 'All':
-        query = "select round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) mtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) mtdnewcust,round(sum(case when kpi_name='Old Customer' then mtd else 0 end )) mtdoldcust,round(sum(case when kpi_name='Table Occupancy' then mtd else 0 end )/count(distinct restaurant_name)) mtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s"
-        params = [end_date, restaurant_name]
+        query = "select sum(mtdtotalrev) mtdtotalrev,sum(mtdnewcust) mtdnewcust,sum(mtdoldcust) mtdoldcust,sum(mtdtableocpny) mtdtableocpny,sum(lmtdtotalrev) lmtdtotalrev,sum(lmtdnewcust) lmtdnewcust from  (select round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) mtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) mtdnewcust,round(sum(case when kpi_name='Old Customer' then mtd else 0 end )) mtdoldcust,round(sum(case when kpi_name='Table Occupancy' then mtd else 0 end )/count(distinct restaurant_name)) mtdtableocpny,0 lmtdtotalrev,0 lmtdnewcust  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s and restaurant_name=%s union all  select 0 mtdtotalrev,0 mtdnewcust,0 mtdoldcust,0 mtdtableocpny,round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) lmtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) lmtdnewcust from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer') and transaction_date=date_add(%s,interval -1 month) and restaurant_name=%s) A"
+        params = [end_date, restaurant_name,end_date, restaurant_name]
     else:
-         query = "select round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) mtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) mtdnewcust,round(sum(case when kpi_name='Old Customer' then mtd else 0 end )) mtdoldcust,round(sum(case when kpi_name='Table Occupancy' then mtd else 0 end )/count(distinct restaurant_name)) mtdtableocpny  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s "
-         params = [end_date]
+         query = "select sum(mtdtotalrev) mtdtotalrev,sum(mtdnewcust) mtdnewcust,sum(mtdoldcust) mtdoldcust,sum(mtdtableocpny) mtdtableocpny,sum(lmtdtotalrev) lmtdtotalrev,sum(lmtdnewcust) lmtdnewcust from  (select round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) mtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) mtdnewcust,round(sum(case when kpi_name='Old Customer' then mtd else 0 end )) mtdoldcust,round(sum(case when kpi_name='Table Occupancy' then mtd else 0 end )/count(distinct restaurant_name)) mtdtableocpny,0 lmtdtotalrev,0 lmtdnewcust  from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer','Old Customer','Table Occupancy') and transaction_date=%s  union all  select 0 mtdtotalrev,0 mtdnewcust,0 mtdoldcust,0 mtdtableocpny,round(sum(case when kpi_name='Total Revenue' then mtd else 0 end )) lmtdtotalrev,round(sum(case when kpi_name='New Customer' then mtd else 0 end )) lmtdnewcust from rpt_kpi_details where kpi_name in ('Total Revenue','New Customer') and transaction_date=date_add(%s,interval -1 month)) A"
+         params = [end_date, end_date]
 
     
     logger.debug(f"Executing query: {query}")
